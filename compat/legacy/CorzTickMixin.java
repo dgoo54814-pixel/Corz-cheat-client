@@ -55,7 +55,7 @@ public abstract class CorzTickMixin {
     }
 
     private static boolean down(Minecraft mc, int code) {
-        return InputConstants.isKeyDown(mc.getWindow().getWindow(), code);
+        return InputConstants.isKeyDown(mc.getWindow().getHandle(), code);
     }
 
     private static void tryAutoLoad(Minecraft mc) {
