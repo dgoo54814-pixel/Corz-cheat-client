@@ -36,6 +36,16 @@ jobs:
             sed -i '/    minecraft "com.mojang:minecraft:/a\    mappings loom.officialMojangMappings()' build.gradle
             sed -i 's/    implementation "net.fabricmc:/    modImplementation "net.fabricmc:/g' build.gradle
             MC="$MC" python3 compat/patch_legacy.py
+            # Legacy compatibility layer uses Fabric Loader and a Mixin, not Fabric API.
+            sed -i '/modImplementation "net.fabricmc.fabric-api:fabric-api:/d' build.gradle
+            python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("src/main/resources/fabric.mod.json")
+          obj=json.loads(p.read_text())
+          obj.get("depends", {}).pop("fabric-api", None)
+          p.write_text(json.dumps(obj, indent=2))
+          PY
           fi
       - name: Install virtual display
         run: |
