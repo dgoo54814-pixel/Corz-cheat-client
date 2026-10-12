@@ -25,16 +25,16 @@ loom {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    sourceCompatibility = JavaVersion.toVersion(project.hasProperty('targetJava') ? project.targetJava : 25)
+    targetCompatibility = JavaVersion.toVersion(project.hasProperty('targetJava') ? project.targetJava : 25)
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.release = 25
+    options.release = Integer.parseInt(project.hasProperty('targetJava') ? project.targetJava.toString() : '25')
     options.encoding = 'UTF-8'
 }
 
 processResources {
     inputs.property 'version', project.version
-    filesMatching('fabric.mod.json') { expand 'version': project.version }
+    filesMatching('fabric.mod.json') { expand 'version': project.version, 'mc_version': project.minecraft_version, 'java_version': project.hasProperty('targetJava') ? project.targetJava : '25' }
 }
