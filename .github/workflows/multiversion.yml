@@ -51,6 +51,23 @@ jobs:
             sed -i '/    minecraft "com.mojang:minecraft:/a\    mappings loom.officialMojangMappings()' build.gradle
             sed -i 's/    implementation "net.fabricmc:/    modImplementation "net.fabricmc:/g' build.gradle
             sed -i 's/JavaVersion.VERSION_25/JavaVersion.VERSION_21/g; s/options.release = 25/options.release = 21/g' build.gradle
+            MC="$MC" python3 compat/patch_legacy.py
+          fi
+          if [ "$MC" = "26.2" ] || [ "$MC" = "26.3" ]; then
+            python3 - <<'PY'
+          import os
+          from pathlib import Path
+          version=os.environ["MC"]
+          for p in Path("src/client/java").rglob("*.java"):
+              s=p.read_text()
+              s=s.replace("mc.screen", "mc.gui.screen()")
+              s=s.replace("minecraft.setScreen(", "minecraft.gui.setScreen(")
+              s=s.replace("mc.setScreen(", "mc.gui.setScreen(")
+              if version=="26.3":
+                  s=s.replace("InputConstants.Type.KEYSYM", "InputConstants.Type.KEYBOARD")
+                  s=s.replace("mc.player.swing(InteractionHand.MAIN_HAND)", "mc.player.swing(InteractionHand.MAIN_HAND, net.minecraft.world.item.component.SwingAnimation.DEFAULT, true)")
+              p.write_text(s)
+          PY
           fi
       - name: Compile Fabric mod
         run: gradle build --no-daemon -Pminecraft_version=${{ matrix.mc }} -Pfabric_api_version=${{ matrix.api }}
