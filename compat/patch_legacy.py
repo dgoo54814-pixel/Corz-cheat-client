@@ -29,3 +29,28 @@ for p in root.glob("*.java"):
         if mc_version!="1.21.11":
             s=s.replace('var category = KeyMapping.Category.register(ResourceLocation.fromNamespaceAndPath("corzstyle", "main"));','String category = "key.category.corzstyle.main";')
     p.write_text(s)
+
+# Dedicated source entrypoint / GUI for older Minecraft.
+from shutil import copyfile
+for name in ("CorzClient.java", "CorzScreen.java", "CorzTickMixin.java"):
+    copyfile(Path("compat/legacy") / name, root / name)
+for name in ("CorzCommands.java", "UiTile.java"):
+    (root / name).unlink(missing_ok=True)
+
+# Older LocalPlayer.displayClientMessage() requires a boolean action bar flag.
+for p in root.glob("*.java"):
+    s=p.read_text()
+    s=re.sub(r'displayClientMessage\((Component\.literal\(.*?\))\);', r'displayClientMessage(\1, false);',s)
+    p.write_text(s)
+
+import json
+meta=Path("src/main/resources/fabric.mod.json")
+info=json.loads(meta.read_text())
+info["mixins"]=["corzstyle.mixins.json"]
+meta.write_text(json.dumps(info,indent=2))
+Path("src/main/resources/corzstyle.mixins.json").write_text(json.dumps({
+    "required":True,"package":"dev.corzstyle.client",
+    "compatibilityLevel":"JAVA_21",
+    "client":["CorzTickMixin"],
+    "injectors":{"defaultRequire":1}
+}, indent=2))
