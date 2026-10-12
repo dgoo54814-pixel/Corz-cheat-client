@@ -17,7 +17,7 @@ public final class CorzClient implements ClientModInitializer {
         CorzCommands.register();
         var category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("corzstyle", "main"));
         KeyMapping openGui = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-                "key.corzstyle.open", InputConstants.Type.KEYSYM, InputConstants.KEY_RIGHT_SHIFT, category));
+                "key.corzstyle.open", InputConstants.Type.KEYSYM, InputConstants.KEY_RSHIFT, category));
         KeyMapping pearl = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.corzstyle.pearl", InputConstants.Type.KEYSYM, InputConstants.KEY_V, category));
 
