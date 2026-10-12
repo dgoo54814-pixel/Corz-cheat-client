@@ -63,3 +63,11 @@ if mc_version=="1.21.8":
 else:
     mixin=mixin.replace(".getHandle()", ".handle()")
 mixin_file.write_text(mixin)
+
+# From Minecraft 1.21.9 onward, InputConstants.isKeyDown expects the Window object.
+if mc_version!="1.21.8":
+    mixin_file=root / "CorzTickMixin.java"
+    mixin_text=mixin_file.read_text()
+    mixin_text=mixin_text.replace("InputConstants.isKeyDown(mc.getWindow().handle(), code)",
+                                  "InputConstants.isKeyDown(mc.getWindow(), code)")
+    mixin_file.write_text(mixin_text)
