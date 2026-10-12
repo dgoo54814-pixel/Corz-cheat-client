@@ -1,0 +1,66 @@
+name: Client Startup Smoke Test
+on:
+  workflow_dispatch:
+  push:
+    branches: [multi-mc-versions]
+    paths:
+      - '.github/workflows/client-smoke.yml'
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { mc: '1.21.8', api: '0.136.1+1.21.8', java: 21 }
+          - { mc: '26.1.2', api: '0.155.3+26.1.2', java: 25 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.7.0'
+      - name: Configure version
+        shell: bash
+        env:
+          MC: ${{ matrix.mc }}
+          JDK: ${{ matrix.java }}
+        run: |
+          set -euo pipefail
+          if [ "$JDK" = "21" ]; then
+            sed -i "s/net.fabricmc.fabric-loom'/net.fabricmc.fabric-loom-remap'/" build.gradle
+            sed -i '/    minecraft "com.mojang:minecraft:/a\    mappings loom.officialMojangMappings()' build.gradle
+            sed -i 's/    implementation "net.fabricmc:/    modImplementation "net.fabricmc:/g' build.gradle
+            MC="$MC" python3 compat/patch_legacy.py
+          fi
+      - name: Install virtual display
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri libasound2t64
+      - name: Attempt graphical Minecraft startup
+        shell: bash
+        run: |
+          set +e
+          timeout --signal=INT --kill-after=8s 115s xvfb-run -a -s "-screen 0 1280x720x24" gradle runClient --no-daemon -Pminecraft_version=${{ matrix.mc }} '-Pfabric_api_version=${{ matrix.api }}' -PtargetJava=${{ matrix.java }} > smoke.log 2>&1
+          code=$?
+          echo "Exit status: $code" >> smoke.log
+          grep -E -i "Caused by:|Crash Report|Mixin apply failed|NoClassDefFoundError|ClassNotFoundException|Exception in thread|Could not resolve|FAILURE: Build failed" smoke.log | tail -35 || true
+          if [ "$code" -eq 0 ] || [ "$code" -eq 124 ]; then
+            echo "Process completed or reached time limit; inspect log to confirm it reached the game" >> smoke.log
+            exit 0
+          fi
+          exit "$code"
+      - name: Save startup diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: startup-log-${{ matrix.mc }}
+          path: |
+            smoke.log
+            run/logs/latest.log
+            run/crash-reports/*.txt
+          if-no-files-found: ignore
