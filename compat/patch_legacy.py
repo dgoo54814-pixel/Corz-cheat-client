@@ -54,3 +54,12 @@ Path("src/main/resources/corzstyle.mixins.json").write_text(json.dumps({
     "client":["CorzTickMixin"],
     "injectors":{"defaultRequire":1}
 }, indent=2))
+
+# Mojang changed the native window handle accessor between the 1.21 lines.
+mixin_file=root / "CorzTickMixin.java"
+mixin=mixin_file.read_text()
+if mc_version=="1.21.8":
+    mixin=mixin.replace(".getHandle()", ".getWindow()")
+else:
+    mixin=mixin.replace(".getHandle()", ".handle()")
+mixin_file.write_text(mixin)
