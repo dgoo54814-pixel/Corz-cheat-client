@@ -1,0 +1,66 @@
+name: Build Corz Cheat Client
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '*.zip'
+      - 'src/**'
+      - 'build.gradle'
+      - 'gradle.properties'
+      - 'settings.gradle'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.7.0'
+      - name: Extract source ZIP and prepare Fabric build
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f build.gradle ]; then
+            archive=$(find . -maxdepth 1 -iname '*.zip' -print -quit)
+            if [ -z "$archive" ]; then
+              echo 'No source ZIP found in the repository.' >&2
+              exit 1
+            fi
+            mkdir -p .source-staging
+            unzip -q "$archive" -d .source-staging
+            if [ -f .source-staging/build.gradle ]; then
+              cp -a .source-staging/. .
+            elif [ -f .source-staging/corz-inspired-26.1.2-source/build.gradle ]; then
+              cp -a .source-staging/corz-inspired-26.1.2-source/. .
+            else
+              echo 'Source ZIP did not contain the expected Fabric project.' >&2
+              exit 1
+            fi
+          fi
+          sed -i "s/1\.16-SNAPSHOT/1.18-SNAPSHOT/g" build.gradle
+          sed -i 's/loader_version=0.18.4/loader_version=0.19.5/g' gradle.properties
+          rm -rf .source-staging
+      - name: Commit extracted source to repository
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A .gitignore LICENSE README.md build.gradle settings.gradle gradle.properties src examples || true
+          if ! git diff --cached --quiet; then
+            git commit -m "Import Corz client project sources"
+            git push
+          fi
+      - name: Compile Fabric mod
+        run: gradle build --no-daemon
+      - name: Upload JAR for download
+        uses: actions/upload-artifact@v4
+        with:
+          name: corz-cheat-client-26.1.2
+          path: build/libs/*.jar
+          if-no-files-found: error
